@@ -12,40 +12,82 @@ def parser():
     
     parser.add_argument("--MHc", type = int)
     parser.add_argument("--Mh", type = int)
-    parser.add_argument("--lhe-dir", type = str)
-    parser.add_argument("--fragment", type = str)
+    parser.add_argument("--events-per-run", type = int, default = 2000)
+    parser.add_argument("--runs", type = int, default = 5000)
 
     return parser.parse_args()
 
+def setMadgraph():
+    commands = [
+                "wget https://launchpad.net/mg5amcnlo/2.0/2.6.x/+download/MG5_aMC_v2.6.4.tar.gz",
+                "tar -xf MG5_aMC_v2.6.4.tar.gz",
+                "rm MG5_aMC_v2.6.4.tar.gz",
+                "wget https://2hdmc.hepforge.org/downloads/2HDMC-1.7.0.tar.gz",
+                "tar -xf 2HDMC-1.7.0.tar.gz",
+                "mv 2HDMC-1.7.0/MGME/2HDMC/ MG5_aMC_v2_6_4/models/",
+                "rm -rf 2HDMC-1.7.0*",
+                "mv MG5_aMC_v2_6_4/ {}/src/ChargedProduction/".format(os.environ["CMSSW_BASE"]),
+    ]
 
-def condor_submit(MHc, Mh, fragment, lhefile):
+    for command in commands:
+        os.system(command)
+
+    print("!!!! Change in MG5_aMC_v2_6_4/models/2HDMC/makefile f77 to gfortran !!!!")
+
+
+def writeCommand(MHc, Mh, nEvents):
+    commands = [
+                "import model_v4 2HDMC",
+                "set fortran_compiler gfortran",
+                "define hc = h- h+",
+                "define w = w+ w-",
+                "define l = l+ l-",
+                "define v = vl vl~",
+                "generate p p > hc h1, h1 > b b~, (hc > h1 w, h1 > b b~, w > l v)",
+                "add process p p > hc h1 j, h1 > b b~, (hc > h1 w, h1 > b b~, w > l v)",
+                "add process p p > hc h1 j j, h1 > b b~, (hc > h1 w, h1 > b b~, w > l v)",
+                "output HPlusAndH_ToWHH_ToL4B_{}_{}".format(MHc, Mh),
+                "launch HPlusAndH_ToWHH_ToL4B_{}_{}".format(MHc, Mh),
+                "HPlusAndH_ToWHH_ToL4B_{}_{}.shla".format(MHc, Mh),
+                "set nevents {}".format(nEvents),
+                "done",       
+    ]
+
+    with open(os.environ["CMSSW_BASE"] + "/src/command_{}_{}.txt".format(MHc, Mh), "w") as f: 
+        for command in commands:
+            f.write(command)
+            f.write("\n")
+
+def condorSubmit(MHc, Mh, run, nEvents):
     job = htcondor.Submit()
     schedd = htcondor.Schedd()
 
-    name = lhefile.split("/")[-1][:-4]
+    inputFiles = [
+                    os.environ["CMSSW_BASE"] + "/src/ChargedProduction/Production/python/cHiggsfragment.py",
+                    os.environ["CMSSW_BASE"] + "/src/ChargedProduction/MG5_aMC_v2_6_4",
+                    os.environ["CMSSW_BASE"] + "/src/command_{}_{}.txt".format(MHc, Mh), 
+                    os.environ["CMSSW_BASE"] + "/src/ChargedProduction/SLHA/HPlusAndH_ToWHH_ToL4B_{}_{}.shla".format(MHc, Mh),
+                    os.environ["CMSSW_BASE"] + "/src/x509",                                              
+                    os.environ["HOME"] + "/.dasmaps/"
+    ]
 
-    outdir = "/nfs/dust/cms/user/{}/Signal/Hc+hTol4b_MHc{}_Mh{}/Samples/".format(os.environ["USER"], MHc, Mh)
+    outdir = "/nfs/dust/cms/user/{}/Signal/HPlusAndH_ToWHH_ToL4B_{}_{}/".format(os.environ["USER"], MHc, Mh)
     os.system("mkdir -p {}".format(outdir)) 
-    os.system("mkdir -p {}/log".format(outdir)) 
 
-    job["executable"] = "{}/src/ChargedHiggs/MCproduction/batch/produceMC.sh".format(os.environ["CMSSW_BASE"])
-    job["arguments"] = " ".join([fragment.split("/")[-1], lhefile.split("/")[-1], name])
-    job["universe"]       = "vanilla"
+    job["executable"] = "{}/src/ChargedProduction/Production/batch/produceMC.sh".format(os.environ["CMSSW_BASE"])
+    job["arguments"] = " ".join([str(i) for i in [MHc, Mh, run, nEvents]])
+    job["universe"] = "vanilla"
 
     job["should_transfer_files"] = "YES"
-    job["transfer_input_files"]       = ",".join([fragment, lhefile, os.environ["CMSSW_BASE"] + "/src/x509", os.environ["HOME"] + "/.dasmaps/"])
-
-    job["log"]                    = "{}/log/job_$(Cluster).log".format(outdir)
-    job["output"]                    = "{}/log/job_$(Cluster).out".format(outdir)
-    job["error"]                    = "{}/log/job_$(Cluster).err".format(outdir)
-
-    job["when_to_transfer_output"] = "ON_EXIT"
-    job["transfer_output_remaps"] = '"' + '{filename}_NANOAOD.root = {outdir}/{filename}_NANOAOD.root;{filename}_MINIAOD.root = {outdir}/{filename}_MINIAOD.root;{filename}_AOD.root = {outdir}/{filename}_AOD.root'.format(filename=name, outdir=outdir) + '"'
+    job["transfer_input_files"] = ",".join(inputFiles)
+    job["log"] = "{}/job_{}.log".format(outdir, run)
+    job["output"] = "{}/job_{}.out".format(outdir, run)
+    job["error"] = "{}/job_{}.err".format(outdir, run)
 
     job["on_exit_hold"] = "(ExitBySignal == True) || (ExitCode != 0)"  
     job["periodic_release"] =  "(NumJobStarts < 100) && ((CurrentTime - EnteredCurrentStatus) > 60)"
 
-    job["+RequestRuntime"]    = "{}".format(60*60*12)
+    job["+RequestRuntime"]    = "{}".format(60*60*15)
 
     def submit(schedd, job):
         with schedd.transaction() as txn:
@@ -54,7 +96,7 @@ def condor_submit(MHc, Mh, fragment, lhefile):
     while(True):
         try: 
             submit(schedd, job)
-            print("Submit job for file {}".format(lhefile))
+            print("Submit job {}".format(run))
             break    
 
         except:
@@ -66,9 +108,14 @@ def main():
     os.system("chmod 755 {}".format(os.environ["X509_USER_PROXY"])) 
     os.system("cp -u {} {}/src/".format(os.environ["X509_USER_PROXY"], os.environ["CMSSW_BASE"])) 
 
-    for fname in os.listdir(args.lhe_dir):
-        lhefile = "{}/{}".format(args.lhe_dir, fname)
-        condor_submit(args.MHc, args.Mh, args.fragment, lhefile)
+    if not os.path.isdir(os.environ["CMSSW_BASE"] + "/src/ChargedProduction/MG5_aMC_v2_6_4"):
+        setMadgraph()
+        return 0
+
+    writeCommand(args.MHc, args.Mh, args.events_per_run)
+
+    for run in range(args.runs):
+        condorSubmit(args.MHc, args.Mh, run, args.events_per_run)
     
 if __name__ == "__main__":
     main()
