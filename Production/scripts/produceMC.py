@@ -19,20 +19,20 @@ def parser():
 
 def setMadgraph():
     commands = [
-                "wget https://launchpad.net/mg5amcnlo/2.0/2.6.x/+download/MG5_aMC_v2.6.4.tar.gz",
-                "tar -xf MG5_aMC_v2.6.4.tar.gz",
-                "rm MG5_aMC_v2.6.4.tar.gz",
+                "wget https://launchpad.net/mg5amcnlo/2.0/2.6.x/+download/MG5_aMC_v2.6.6.tar.gz",
+                "tar -xf MG5_aMC_v2.6.6.tar.gz",
+                "rm MG5_aMC_v2.6.6.tar.gz",
                 "wget https://2hdmc.hepforge.org/downloads/2HDMC-1.7.0.tar.gz",
                 "tar -xf 2HDMC-1.7.0.tar.gz",
-                "mv 2HDMC-1.7.0/MGME/2HDMC/ MG5_aMC_v2_6_4/models/",
+                "mv 2HDMC-1.7.0/MGME/2HDMC/ MG5_aMC_v2_6_6/models/",
                 "rm -rf 2HDMC-1.7.0*",
-                "mv MG5_aMC_v2_6_4/ {}/src/ChargedProduction/".format(os.environ["CMSSW_BASE"]),
+                "mv MG5_aMC_v2_6_6/ {}/src/ChargedProduction/".format(os.environ["CMSSW_BASE"]),
     ]
 
     for command in commands:
         os.system(command)
 
-    print("!!!! Change in MG5_aMC_v2_6_4/models/2HDMC/makefile f77 to gfortran !!!!")
+    print("!!!! Change in MG5_aMC_v2_6_6/models/2HDMC/makefile f77 to gfortran !!!!")
 
 
 def writeCommand(MHc, Mh, nEvents):
@@ -59,19 +59,19 @@ def writeCommand(MHc, Mh, nEvents):
             f.write("\n")
 
 def condorSubmit(MHc, Mh, run, nEvents):
-    job = htcondor.Submit()
+    job = htcondor.Submit({})
     schedd = htcondor.Schedd()
 
     inputFiles = [
                     os.environ["CMSSW_BASE"] + "/src/ChargedProduction/Production/python/cHiggsfragment.py",
-                    os.environ["CMSSW_BASE"] + "/src/ChargedProduction/MG5_aMC_v2_6_4",
+                    os.environ["CMSSW_BASE"] + "/src/ChargedProduction/MG5_aMC_v2_6_6",
                     os.environ["CMSSW_BASE"] + "/src/command_{}_{}.txt".format(MHc, Mh), 
                     os.environ["CMSSW_BASE"] + "/src/ChargedProduction/SLHA/HPlusAndH_ToWHH_ToL4B_{}_{}.shla".format(MHc, Mh),
                     os.environ["CMSSW_BASE"] + "/src/x509",                                              
                     os.environ["HOME"] + "/.dasmaps/"
     ]
 
-    outdir = "/nfs/dust/cms/user/{}/Signal/HPlusAndH_ToWHH_ToL4B_{}_{}/".format(os.environ["USER"], MHc, Mh)
+    outdir = "{}/Signal/HPlusAndH_ToWHH_ToL4B_{}_{}/".format(os.environ["CHDIR"], MHc, Mh)
     os.system("mkdir -p {}".format(outdir)) 
 
     job["executable"] = "{}/src/ChargedProduction/Production/batch/produceMC.sh".format(os.environ["CMSSW_BASE"])
@@ -87,7 +87,7 @@ def condorSubmit(MHc, Mh, run, nEvents):
     job["on_exit_hold"] = "(ExitBySignal == True) || (ExitCode != 0)"  
     job["periodic_release"] =  "(NumJobStarts < 100) && ((CurrentTime - EnteredCurrentStatus) > 60)"
 
-    job["+RequestRuntime"]    = "{}".format(60*60*15)
+    job["+RequestRuntime"]    = "{}".format(60*60*12)
 
     def submit(schedd, job):
         with schedd.transaction() as txn:
@@ -108,7 +108,7 @@ def main():
     os.system("chmod 755 {}".format(os.environ["X509_USER_PROXY"])) 
     os.system("cp -u {} {}/src/".format(os.environ["X509_USER_PROXY"], os.environ["CMSSW_BASE"])) 
 
-    if not os.path.isdir(os.environ["CMSSW_BASE"] + "/src/ChargedProduction/MG5_aMC_v2_6_4"):
+    if not os.path.isdir(os.environ["CMSSW_BASE"] + "/src/ChargedProduction/MG5_aMC_v2_6_6"):
         setMadgraph()
         return 0
 
