@@ -24,9 +24,9 @@ export X509_USER_PROXY=$CMSSW_BASE/src/x509
 
 scram b
 
-mv ../../MG5_aMC_v2_6_4 ./
+mv ../../MG5_aMC_v2_6_6 ./
 
-./MG5_aMC_v2_6_4/bin/mg5_aMC command_$1_$2.txt 
+./MG5_aMC_v2_6_6/bin/mg5_aMC command_$1_$2.txt 
 gunzip $NAME/Events/run_01/unweighted_events.lhe.gz 
 mv $NAME/Events/run_01/unweighted_events.lhe ${NAME}_$3.lhe
 
@@ -58,7 +58,7 @@ cmsDriver.py MINIAOD --mc --python_filename ${NAME}_MINIAOD_cfg.py --eventconten
 gfal-mkdir -p srm://dcache-se-cms.desy.de:8443/srm/managerv2?SFN=/pnfs/desy.de/cms/tier2/store/user/dbrunner/signal/$NAME/MINIAOD_2017
 gfal-copy -f ${NAME}_$3_MINIAOD.root srm://dcache-se-cms.desy.de:8443/srm/managerv2?SFN=/pnfs/desy.de/cms/tier2/store/user/dbrunner/signal/$NAME/MINIAOD_2017
 
-cp *MINIAOD.root ../../
+mv *MINIAOD.root ../../
 cd ../../ 
 
 eval `scramv1 project CMSSW CMSSW_10_2_15`
@@ -67,7 +67,7 @@ eval `scramv1 runtime -sh`
 
 scram b
 
-cp ../../*MINIAOD.root .
+mv ../../*MINIAOD.root .
 
 cmsDriver.py NANOAOD --mc --eventcontent NANOAODSIM --python_filename ${NAME}_NANOAOD_cfg.py --datatier NANOAODSIM --conditions 102X_mc2017_realistic_v7 --era $ERA,run2_nanoAOD_94XMiniAODv2 --step NANO --filein file:${NAME}_$3_MINIAOD.root --fileout file:${NAME}_$3_NANOAOD.root -n $N --customise_commands 'process.particleLevelSequence.remove(process.genParticles2HepMCHiggsVtx);process.particleLevelSequence.remove(process.rivetProducerHTXS);process.particleLevelTables.remove(process.HTXSCategoryTable)'
 
