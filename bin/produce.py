@@ -12,7 +12,7 @@ def parser():
     parser.add_argument("--Mh", type = str, help = "Small Higgs mass")
     parser.add_argument("--events", type = str, help = "Number of events per jobs to be generated")
     parser.add_argument("--jobs", type = int, help = "Number of jobs for generation")
-    parser.add_argument("--step", type = str, help = "Step in event generation", choices=["LHE", "GS", "AOD","MINIAOD"])
+    parser.add_argument("--step", type = str, help = "Step in event generation", choices=["LHE", "GS", "AOD"])
     parser.add_argument("--resubmit", action="store_true", help = "Resubmit failed jobs")
 
     return parser.parse_args()
@@ -32,7 +32,6 @@ def submit(MHc, Mh, events, step, jobs):
             "error = {}/err/condor_$(job).err".format(workDir),
             "getenv = True",
             "output = {}/out/condor_$(job).out".format(workDir),
-            "max_materialize = 200",
     ]
 
     if step == "GS":

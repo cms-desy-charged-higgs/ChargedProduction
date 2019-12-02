@@ -6,7 +6,7 @@ export JOB=$4
 NAME=HPlusAndH_ToWHH_ToL4B_${MHC}_${MH}
 
 source $MCDIR/ChargedProduction/setenv.sh
-#cd $TMP
+cd $TMP
 
 gfal-copy srm://dcache-se-cms.desy.de:8443/srm/managerv2?SFN=/pnfs/desy.de/cms/tier2/store/user/dbrunner/signal/$NAME/DRP_$YEAR/${NAME}_${JOB}_DRP.root .
 
