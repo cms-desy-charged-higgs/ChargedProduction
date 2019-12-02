@@ -3,7 +3,10 @@
 ## Installation
 Get the installation script from the CharpedProduction repository:
 
-`https://raw.githubusercontent.com/cms-desy-charged-higgs/ChargedProduction/master/install.sh`
+```
+https://raw.githubusercontent.com/cms-desy-charged-higgs/ChargedProduction/master/install.sh
+source install.sh
+```
 
 The directory `MCProduction` is created and everything will be installed there.
 
@@ -11,7 +14,9 @@ The directory `MCProduction` is created and everything will be installed there.
 
 For each new shell source the script to set up the enviroment:
 
-`source path-to-MCProduction/ChargedProduction/setenv.sh`
+```
+source path-to-MCProduction/ChargedProduction/setenv.sh
+```
 
 To send jobs with htcondor to produce signal MC, the `produce.py`  script is used. 
 ```
@@ -40,4 +45,6 @@ AOD: Production of AOD and MINIAOD files
 
 One example for usage of the script to produce LHE files:
 
-`produce.py --MHc 400 --Mh 100 --events 5000 --jobs 2000 --step LHE`
+```
+produce.py --MHc 400 --Mh 100 --events 5000 --jobs 2000 --step LHE
+```
