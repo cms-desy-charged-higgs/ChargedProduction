@@ -4,7 +4,7 @@
 Get the installation script from the CharpedProduction repository:
 
 ```
-https://raw.githubusercontent.com/cms-desy-charged-higgs/ChargedProduction/master/install.sh
+wget https://raw.githubusercontent.com/cms-desy-charged-higgs/ChargedProduction/master/install.sh
 source install.sh
 ```
 
