@@ -4,6 +4,10 @@ import sys
 import os
 import argparse
 import subprocess
+from multiprocessing import Process, Pool, cpu_count
+
+from CRABAPI.RawCommand import crabCommand
+from CRABClient.UserUtilities import config
 
 def parser():
     parser = argparse.ArgumentParser()
@@ -14,6 +18,7 @@ def parser():
     parser.add_argument("--jobs", type = int, help = "Number of jobs for generation")
     parser.add_argument("--step", type = str, help = "Step in event generation", choices=["LHE", "GS", "AOD"])
     parser.add_argument("--resubmit", action="store_true", help = "Resubmit failed jobs")
+    parser.add_argument("--grid", type=str, default="condor", choices = ["crab", "condor"], help = "Choose where to send your jobs")
 
     return parser.parse_args()
 
@@ -48,21 +53,80 @@ def submit(MHc, Mh, events, step, jobs):
     
     subprocess.call(["condor_submit", "{}/condor.sub".format(workDir)])
 
+
+def _submitCrab(crabJob):
+    crabCommand("submit", config=crabJob)
+
+def submitCrab(MHc, Mh, events, step, jobs):
+    crabJobs = []
+
+    for job in jobs:
+        ##Crab config
+        crabConf = config()
+
+        mcDir = os.environ["MCDIR"]
+        workDir = "{}/{}_{}_{}".format(mcDir, step, MHc, Mh)
+        subprocess.call(["mkdir", "-p", "{}/crab".format(workDir)])
+
+        crabConf.General.requestName = 'Job_{}'.format(job)
+        crabConf.General.workArea = '{}/crab'.format(workDir)
+        crabConf.General.transferOutputs = False
+        crabConf.General.transferLogs = False
+
+        crabConf.JobType.pluginName = "PrivateMC"
+        crabConf.JobType.scriptExe = "{}/ChargedProduction/crab/produce{}.sh".format(mcDir, step)
+        crabConf.JobType.psetName = "{}/ChargedProduction/crab/dummy.py".format(mcDir)
+        crabConf.JobType.maxJobRuntimeMin = 60*24
+        crabConf.JobType.maxMemoryMB = 3000
+        crabConf.JobType.scriptArgs = ["MHC={}".format(MHc), "MH={}".format(Mh), "NEVENTS={}".format(events), "JOB={}".format(job)]
+        crabConf.JobType.disableAutomaticOutputCollection = True
+        crabConf.JobType.sendPythonFolder = True
+        crabConf.JobType.inputFiles = ["{}/.globus/x509".format(os.environ["HOME"])]
+
+        crabConf.Data.totalUnits = 1
+        crabConf.Data.unitsPerJob = 1
+        crabConf.Data.splitting = 'EventBased'
+        crabConf.Data.publication = False
+
+        crabConf.User.voGroup = "dcms"
+        crabConf.Site.storageSite = 'T2_DE_DESY'
+
+        crabJobs.append(crabConf)
+
+    processes = [Process(target=_submitCrab, args=(conf,)) for conf in crabJobs]
+
+    for process in processes:
+        process.start()
+        process.join()
+
 def main():
     ##Parser
     args = parser()
 
     ##Check for job numbers to be resubmitted
     if args.resubmit:
-        dCache = "srm://dcache-se-cms.desy.de:8443/srm/managerv2?SFN=/pnfs/desy.de/cms/tier2/store/user/dbrunner/signal/HPlusAndH_ToWHH_ToL4B_{}_{}/{}_{}".format(args.MHc, args.Mh, args.step, os.environ["YEAR"])
+        if args.step == "LHE":
+            dCache = "srm://dcache-se-cms.desy.de:8443/srm/managerv2?SFN=/pnfs/desy.de/cms/tier2/store/user/dbrunner/signal/HPlusAndH_ToWHH_ToL4B_{}_{}/{}_{}".format(args.MHc, args.Mh, "LHE", os.environ["YEAR"])
 
-        files = subprocess.check_output(["gfal-ls", dCache])
-        extFiles = [int(f.split("_")[-1].split(".")[0]) for f in files.split("\n") if f != ""]
-        missingNr = list(set(range(args.jobs)) - set(extFiles))
+            files = subprocess.check_output(["gfal-ls", dCache])
+            extFiles = [int(f.split("_")[-1].split(".")[0]) for f in files.split("\n") if f != ""]
+            missingNr = list(set(range(args.jobs)) - set(extFiles))
+
+        if args.step == "GS":
+            dCache = "srm://dcache-se-cms.desy.de:8443/srm/managerv2?SFN=/pnfs/desy.de/cms/tier2/store/user/dbrunner/signal/HPlusAndH_ToWHH_ToL4B_{}_{}/{}_{}".format(args.MHc, args.Mh, "DRP", os.environ["YEAR"])
+
+            files = subprocess.check_output(["gfal-ls", dCache])
+            extFiles = [int(f.split("_")[-2]) for f in files.split("\n") if f != ""]
+            missingNr = list(set(range(args.jobs)) - set(extFiles))
 
     ##Submit jobs
     jobs = range(args.jobs) if not args.resubmit else missingNr
-    submit(args.MHc, args.Mh, args.events, args.step, jobs)
-    
+
+    if args.grid == "condor":
+        submit(args.MHc, args.Mh, args.events, args.step, jobs)
+
+    if args.grid == "crab":
+        submitCrab(args.MHc, args.Mh, args.events, args.step, jobs)
+
 if __name__ == "__main__":
     main()
