@@ -18,6 +18,11 @@ For each new shell source the script to set up the enviroment:
 source path-to-MCProduction/ChargedProduction/setenv.sh
 ```
 
+Set up a proxy:
+```
+voms-proxy-init --voms cms:/cms/dcms --valid 168:00
+```
+
 To send jobs with htcondor to produce signal MC, the `produce.py`  script is used. 
 ```
 produce.py --help
