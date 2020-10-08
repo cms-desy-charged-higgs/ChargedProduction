@@ -4,7 +4,7 @@
 export CONDITIONS=94X_mc2017_realistic_v14
 export ERA=Run2_2017
 export YEAR=2017
-export NAME=HPlusAndH_ToWHH_ToL2B2Tau
+export NAME=HPlusAndH_ToWHH_ToL4B
 
 MHC=$1
 MH=$2
@@ -43,6 +43,22 @@ case $3 in
         rm cmsRunConfig.py*
         ;;
 
+    "NANOAOD")
+        export SCRAM_ARCH=slc6_amd64_gcc700
+        cd $MCDIR/CMSSW_10_2_15/src
+
+        source /cvmfs/cms.cern.ch/cmsset_default.sh
+        source /cvmfs/cms.cern.ch/crab3/crab.sh
+        eval `scramv1 runtime -sh`
+        scram b
+
+        cmsDriver.py NANOAOD -s NANO --mc --eventcontent NANOAODSIM --datatier NANOAODSIM  --no_exec  --conditions 102X_mc2017_realistic_v7 --era $ERA,run2_nanoAOD_94XMiniAODv2 --python_filename cmsRunConfig.py
+
+        produceNANOAOD.py --MHc $MHC --Mh $MH --year $YEAR
+        rm cmsRunConfig.py*
+
+        source $MCDIR/ChargedProduction/setenv.sh
+        ;;
     *)
         echo "Invalid option: $1"
         echo "Please use this options: {GEN, DRP}"
