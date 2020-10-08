@@ -19,7 +19,7 @@ def crabConfig(MHc, Mh, year):
     crabConf = config()
 
     crabConf.General.requestName = "AOD_{}".format(year)
-    crabConf.General.workArea = "{}/HPlusAndH_ToWHH_ToL2B2Tau_{}_{}".format(os.environ["MCDIR"], MHc, Mh)
+    crabConf.General.workArea = "{}/HPlusAndH_ToWHH_ToL4B_{}_{}".format(os.environ["MCDIR"], MHc, Mh)
     crabConf.General.transferOutputs = True
     crabConf.General.transferLogs = False
 
@@ -28,11 +28,11 @@ def crabConfig(MHc, Mh, year):
     crabConf.JobType.maxMemoryMB = 3000
     crabConf.JobType.maxJobRuntimeMin = 27*60
 
-    crabConf.Data.inputDataset = "/HPlusAndH_ToWHH_ToL2B2Tau_{}_{}/dbrunner-DRP-{}-ac15a55eb3736b3739f2bcd2e556d28f/USER".format(MHc, Mh, year)
+    crabConf.Data.inputDataset = "/HPlusAndH_ToWHH_ToL4B_{}_{}/dbrunner-DRP-{}-ac15a55eb3736b3739f2bcd2e556d28f/USER".format(MHc, Mh, year)
     crabConf.Data.inputDBS = "phys03"
     crabConf.Data.splitting = "EventAwareLumiBased"
-    crabConf.Data.unitsPerJob = 20000
-    crabConf.Data.totalUnits = crabConf.Data.unitsPerJob * 2000
+    crabConf.Data.unitsPerJob = 4000
+    crabConf.Data.totalUnits = crabConf.Data.unitsPerJob * 3000
     crabConf.Data.outLFNDirBase = "/store/user/dbrunner/signal/"
     crabConf.Data.publication = True
     crabConf.Data.outputDatasetTag = "AOD-{}".format(year)
